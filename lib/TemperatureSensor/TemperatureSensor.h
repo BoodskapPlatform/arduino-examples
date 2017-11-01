@@ -1,0 +1,10 @@
+#ifdef IMPL_TEMP_SENSOR
+
+#ifndef _TEMPERATURE_SENSOR_H_
+#define _TEMPERATURE_SENSOR_H_
+
+#define TOUCH_PIN D5
+
+#endif //_TOUCH_SENSOR_H_
+
+#endif //IMPL_TEMP_SENSOR
