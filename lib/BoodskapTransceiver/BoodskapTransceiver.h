@@ -21,11 +21,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. 
  */ 
-#ifndef _BSKP_TRANSCEIVER_H_
-#define _BSKP_TRANSCEIVER_H_
-
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266httpUpdate.h>
+#include <Storage.h>
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>
+
+#ifndef _BSKP_TRANSCEIVER_H_
+#define _BSKP_TRANSCEIVER_H_
 
 #define DEBUG_PORT Serial
 
@@ -33,10 +38,11 @@ SOFTWARE.
 #define MESSAGE_BUFF_SIZE 512
 #endif
 
+
 /**
  * Implement these methods in your code to handle incoming commands
+ * Return true to ack the message, false to nack the message
  */
-// * Return true to ack the message, false to nack the message
 extern bool handleIncoming(uint32_t messageId, JsonObject& header, JsonObject& message);
 
 //===================================================================
@@ -55,15 +61,57 @@ extern void checkIncoming();
 void checkAndConnect();
 void parseIncoming(byte* data);
 void sendHeartbeat();
-void doOTA(const char *url, bool https, const char *fingerprint);
+void doOTA(String model, String version);
 
-
+extern String wifiSSID;
+extern String wifiPSK;
+extern String domainKey;
+extern String apiKey;
+extern const String deviceModel;
+extern const String firmwareVersion;
 extern String deviceId;
+extern long lastMessage;
+extern char API_URL[];
 
 #define MSG_PING 1
 #define MSG_ACK 2
+#define MSG_FACTORY_RESET 97
 #define MSG_OTA 98
 #define MSG_REBOOT 99
 
+extern String apiBastPath;
+extern String apiFingerprint;
+extern bool apiHttps;
+extern bool _factoryResetRequested;
+extern bool _rebootRequested;
+extern bool _otaRequested;
+
+#ifdef USE_UDP
+
+extern String udpHost;
+extern uint16_t udpPort;
+extern uint16_t udpHeartbeat; 
+
+#endif //USE_UDP
+
+#ifdef USE_MQTT
+
+#define MQTT_CLIENT_ID_LEN 25
+#define MQTT_USER_ID_LEN 40
+#define MQTT_PASSWD_LEN 25
+#define MQTT_IN_TOPIC_LEN 80
+#define MQTT_OUT_TOPIC_LEN 128
+
+extern String mqttHost;
+extern uint16_t mqttPort;
+extern uint16_t mqttHeartbeat;
+
+#endif //USE_MQTT
+
+#ifdef USE_HTTP
+
+extern uint16_t httpHeartbeat;
+
+#endif //USE_HTTP
 
 #endif //_BSKP_TRANSCEIVER_H_

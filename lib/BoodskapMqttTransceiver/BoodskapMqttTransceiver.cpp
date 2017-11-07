@@ -23,8 +23,6 @@ SOFTWARE.
  */ 
 #ifdef USE_MQTT
 
-#include <WiFiUdp.h>
-#include <BoodskapTransceiver.h>
 #include "BoodskapMqttTransceiver.h"
 
 WiFiClient espClient;
@@ -44,13 +42,14 @@ void sendMessage(int messageId, JsonObject &data)
     initController();
   }
 
-  sprintf(MQTT_OUT_TOPIC, "/%s/device/%s/msgs/%d/%s/%s", DOMAIN_KEY, deviceId.c_str(), messageId, DEVICE_MODEL, FIRMWARE_VERSION);
+  sprintf(MQTT_OUT_TOPIC, "/%s/device/%s/msgs/%d/%s/%s", domainKey.c_str(), deviceId.c_str(), messageId, deviceModel.c_str(), firmwareVersion.c_str());
 
   String jsonStr;
   data.printTo(jsonStr);
 
-  if (messageId >= 100)
+  if (messageId >= 0)
   { //Print only user defined messages
+    DEBUG_PORT.print("Sending: ");
     DEBUG_PORT.println(MQTT_OUT_TOPIC);
     DEBUG_PORT.println(jsonStr);
   }
@@ -61,6 +60,8 @@ void sendMessage(int messageId, JsonObject &data)
   }
 
   mqtt.publish(MQTT_OUT_TOPIC, jsonStr.c_str());
+
+  lastMessage = millis();
 }
 
 void sendAck(JsonObject& header, uint32_t corrId, int ack)
@@ -90,10 +91,10 @@ void initController()
     return;
 
   sprintf(MQTT_CLIENT_ID, "DEV_%s", deviceId.c_str());
-  sprintf(MQTT_USER_ID, "DEV_%s", DOMAIN_KEY);
-  sprintf(MQTT_PASSWD, "%s", API_KEY);
+  sprintf(MQTT_USER_ID, "DEV_%s", domainKey.c_str());
+  sprintf(MQTT_PASSWD, "%s", apiKey.c_str());
 
-  sprintf(MQTT_IN_TOPIC, "/%s/device/%s/cmds", DOMAIN_KEY, deviceId.c_str());
+  sprintf(MQTT_IN_TOPIC, "/%s/device/%s/cmds", domainKey.c_str(), deviceId.c_str());
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(messageCallback);
@@ -129,6 +130,11 @@ void checkIncoming()
   }
 
   mqtt.loop();
+
+  if ((millis() - lastMessage) >= (mqttHeartbeat*1000))
+  {
+    sendHeartbeat();
+  }
 }
 
 #endif //USE_MQTT

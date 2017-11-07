@@ -21,9 +21,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. 
  */ 
+#include <Arduino.h>
+
 #ifndef _APPLICATION_H
 #define _APPLICATION_H
 
+extern void setupTransceiver();
+
+/**
+ * These methods has to be implemented by every implementations
+ */
 extern void setupApp();
 extern void loopApp();
 

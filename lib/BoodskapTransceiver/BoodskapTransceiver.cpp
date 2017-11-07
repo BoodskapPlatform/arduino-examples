@@ -20,52 +20,263 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. 
- */ 
-#include <ArduinoJson.h>
-#include <BoodskapTransceiver.h>
-#include <ESP8266httpUpdate.h>
+ */
+#include "BoodskapTransceiver.h"
 
-#ifdef DEVICE_ID
-String deviceId = DEVICE_ID;
-#else
+Storage flash;
+
 String deviceId;
-#endif
-
+String domainKey;
+String apiKey;
+String wifiSSID;
+String wifiPSK;
+long lastMessage = 0;
+char API_URL[API_URL_LEN];
+bool _factoryResetRequested = false;
 bool _rebootRequested = false;
 bool _otaRequested = false;
-String _otaURI;
-bool _otaHttps = false;
-String _otaFingerprint;
+String _otaModel;
+String _otaVersion;
+bool configured = false;
+bool shouldSaveConfig = false;
+String apiBastPath;
+String apiFingerprint;
+bool apiHttps = true;
+int maxTries = 0;
+
+#ifdef USE_UDP
+String udpHost;
+uint16_t udpPort;
+uint16_t udpHeartbeat;
+#elif defined USE_MQTT
+String mqttHost;
+uint16_t mqttPort;
+uint16_t mqttHeartbeat;
+#elif defined USE_HTTP
+uint16_t httpHeartbeat;
+#endif
+
+void setupTransceiver()
+{
+
+  deviceId = "ESP8266-";
+  deviceId += String(ESP.getChipId());
+
+  apiBastPath = API_BASE_PATH;
+  apiFingerprint = API_FINGERPRINT;
+#ifdef API_HTTPS
+  apiHttps = true;
+#else
+  apiHttps = false;
+#endif
+
+#ifdef USE_UDP
+
+  udpHost = UDP_HOST;
+  udpPort = UDP_PORT;
+  udpHeartbeat = UDP_HEARTBEAT;
+
+#elif defined USE_MQTT
+
+  mqttHost = MQTT_HOST;
+  mqttPort = MQTT_PORT;
+  mqttHeartbeat = MQTT_HEARTBEAT;
+
+#elif defined USE_HTTP
+
+  httpHeartbeat = HTTP_HEARTBEAT;
+
+#endif
+
+  flash.open();
+
+  if (flash.exists(BSKP_CONFIG_FILE))
+  {
+    size_t read = 0;
+    String content = flash.readFile(BSKP_CONFIG_FILE, &read);
+    if (read > 0)
+    {
+      DEBUG_PORT.printf("Read %d bytes from FLASH\nContent:\n%s\n", read, content.c_str());
+
+      StaticJsonBuffer<CONFIG_SIZE> jsonBuffer;
+      JsonObject &root = jsonBuffer.parse(content);
+
+      if (root.success())
+      {
+
+        configured = true;
+        wifiSSID = root["ssid"].as<String>();
+        wifiPSK = root["psk"].as<String>();
+        domainKey = root["dkey"].as<String>();
+        apiKey = root["akey"].as<String>();
+
+        apiBastPath = root["api_url"].as<String>();
+        apiFingerprint = root["api_fp"].as<String>();
+
+        apiBastPath.toLowerCase();
+        apiHttps = apiBastPath.startsWith("https");
+
+#ifdef USE_UDP
+
+        udpHost = root["udp_host"].as<String>();
+        udpPort = root["udp_port"].as<uint16_t>();
+
+#elif defined USE_MQTT
+
+        mqttHost = root["mqtt_host"].as<String>();
+        mqttPort = root["mqtt_port"].as<uint16_t>();
+
+#endif
+      }
+      else
+      {
+        DEBUG_PORT.println("**** UNABLE TO PARSE CONFIG ****");
+      }
+    }
+  }
+  else
+  {
+    DEBUG_PORT.printf("Config file %s not found\n", BSKP_CONFIG_FILE);
+  }
+
+FINISH:
+
+  flash.close();
+
+  DEBUG_PORT.printf("*** Configured = %d ***\n", configured);
+
+  delay(300);
+}
+
+void saveConfigCallback()
+{
+  DEBUG_PORT.println("Should save config = true");
+  shouldSaveConfig = true;
+}
 
 void checkAndConnect()
 {
 
-  if(_rebootRequested){
+START:
+  ++maxTries;
+  int tries = 0;
+
+  if(_factoryResetRequested){
+    DEBUG_PORT.println("*** Performing factory reset *****");
+    WiFiManager wifiManager;
+    wifiManager.resetSettings();
+    bool formatted = flash.format();
+    DEBUG_PORT.printf("Formatted FLASH = %s\n", formatted ? "true" : "false");
+    _rebootRequested = true;
+  }
+
+  if (_rebootRequested)
+  {
+    DEBUG_PORT.println("*** Rebooting *****");
     ESP.restart();
     _rebootRequested = false;
   }
 
-  if(_otaRequested){
-    doOTA(_otaURI.c_str(), _otaHttps, _otaFingerprint.c_str());
+  if (_otaRequested)
+  {
+    doOTA(_otaModel, _otaVersion);
     _otaRequested = false;
   }
 
-  if (WiFi.status() == WL_CONNECTED){
+  if (!configured)
+  {
+
+    WiFiManager wifiManager;
+    //wifiManager.resetSettings();
+    wifiManager.setTimeout(120);
+    wifiManager.setConfigPortalTimeout(300);
+    wifiManager.setConnectTimeout(30);
+    wifiManager.setSaveConfigCallback(saveConfigCallback);
+
+    WiFiManagerParameter _p_dkey("dkey", "Domain Key", domainKey.c_str(), 15);
+    WiFiManagerParameter _p_akey("akey", "API Key", apiKey.c_str(), 15);
+    WiFiManagerParameter _p_api_url("api_url", "API Base URL", apiBastPath.c_str(), 40);
+    WiFiManagerParameter _p_api_fp("api_fp", "API HTTPS Fingerprint", apiFingerprint.c_str(), 60);
+    WiFiManagerParameter _p_api_https("api_https", "If HTTPS API", "true", 6);
+
+    wifiManager.addParameter(&_p_dkey);
+    wifiManager.addParameter(&_p_akey);
+    wifiManager.addParameter(&_p_api_url);
+    wifiManager.addParameter(&_p_api_fp);
+    wifiManager.addParameter(&_p_api_https);
+
+#ifdef USE_UDP
+    WiFiManagerParameter _p_udp_host("udp_host", "UDP Host/IP", UDP_HOST, 40);
+    WiFiManagerParameter _p_udp_port("udp_port", "UDP Port", String(UDP_PORT).c_str(), 8);
+    wifiManager.addParameter(&_p_udp_host);
+    wifiManager.addParameter(&_p_udp_port);
+#elif defined USE_MQTT
+    WiFiManagerParameter _p_mqtt_host("mqtt_host", "MQTT Host/IP", MQTT_HOST, 40);
+    WiFiManagerParameter _p_mqtt_port("mqtt_port", "MQTT Port", String(MQTT_PORT).c_str(), 8);
+    wifiManager.addParameter(&_p_mqtt_host);
+    wifiManager.addParameter(&_p_mqtt_port);
+#endif
+
+    //set static ip
+    wifiManager.setAPStaticIPConfig(IPAddress(10, 0, 1, 99), IPAddress(10, 0, 1, 1), IPAddress(255, 255, 255, 0));
+
+    if (!wifiManager.startConfigPortal(deviceId.c_str(), "boodskap"))
+    {
+      DEBUG_PORT.println("failed to connect and hit timeout");
+      delay(3000);
+      //reset and try again, or maybe put it to deep sleep
+      ESP.reset();
+      delay(5000);
+    }
+
+    if (shouldSaveConfig)
+    {
+
+      StaticJsonBuffer<CONFIG_SIZE> jsonBuffer;
+      JsonObject &root = jsonBuffer.createObject();
+
+      root["ssid"] = WiFi.SSID();
+      root["psk"] = WiFi.psk();
+      root["dkey"] = _p_dkey.getValue();
+      root["akey"] = _p_akey.getValue();
+      root["api_url"] = _p_api_url.getValue();
+      root["api_fp"] = _p_api_fp.getValue();
+      root["api_https"] = String(_p_api_https.getValue()).equalsIgnoreCase("true");
+
+#ifdef USE_UDP
+      root["udp_host"] = _p_udp_host.getValue();
+      root["udp_port"] = String(_p_udp_port.getValue()).toInt();
+#elif defined USE_MQTT
+      root["mqtt_host"] = _p_mqtt_host.getValue();
+      root["mqtt_port"] = String(_p_mqtt_port.getValue()).toInt();
+#endif
+
+      String jsonStr;
+      root.printTo(jsonStr);
+      flash.open();
+      flash.writeFile(BSKP_CONFIG_FILE, jsonStr);
+      flash.close();
+
+      _rebootRequested = true;
+    }
+
     return;
   }
 
-#ifndef DEVICE_ID
-  deviceId = "ESP8266-";
-  deviceId += ESP.getChipId();
-#endif
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    maxTries = 0;
+    return;
+  }
 
 BEGIN:
 
+  ++tries;
   long started = millis();
 
-  DEBUG_PORT.printf("Connecting to %s ", WIFI_SSID);
+  DEBUG_PORT.printf("Connecting to %s ", wifiSSID.c_str());
 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(wifiSSID.c_str(), wifiPSK.c_str());
 
   while (WiFi.status() != WL_CONNECTED)
   {
@@ -101,14 +312,27 @@ BEGIN:
         }
       }
 
-      goto BEGIN;
+      if (maxTries >= 9)
+      {
+        _rebootRequested = true;
+        return;
+      }
+      else if (tries >= 3)
+      {
+        configured = false;
+        goto START;
+      }
+      else
+      {
+        goto BEGIN;
+      }
     }
   }
 
   DEBUG_PORT.println();
 
-  DEBUG_PORT.printf("Connected to %s \n", WIFI_SSID);
-  DEBUG_PORT.printf("DomainKey: %s, ApiKey: %s, DeviceID: %s, Model: %s, FWVersion: %s\n", DOMAIN_KEY, API_KEY, deviceId.c_str(), DEVICE_MODEL, FIRMWARE_VERSION);
+  DEBUG_PORT.printf("Connected to %s \n", wifiSSID.c_str());
+  DEBUG_PORT.printf("DomainKey: %s, ApiKey: %s, DeviceID: %s, Model: %s, FWVersion: %s\n", domainKey.c_str(), apiKey.c_str(), deviceId.c_str(), deviceModel.c_str(), firmwareVersion.c_str());
 
   initController();
 }
@@ -123,22 +347,22 @@ void sendHeartbeat()
   sendMessage(MSG_PING, data);
 }
 
-void doOTA(const char *url, bool https, const char *fingerprint)
+void doOTA(String model, String version)
 {
 
   t_httpUpdate_return ret;
 
-  DEBUG_PORT.println("Downloading new firmware from ");
-  DEBUG_PORT.println(url);
+  //https://api.boodskap.io/push/raw/{dkey}/{akey}/{did}/{dmdl}/{fwver}/{mid}
+  sprintf(API_URL, "%s/mservice/esp8266/ota?dkey=%s&akey=%s&dmodel=%s&fwver=%s", API_BASE_PATH, domainKey.c_str(), apiKey.c_str(), model.c_str(), version.c_str());
 
-  if (https)
-  {
-    ret = ESPhttpUpdate.update(url, FIRMWARE_VERSION, fingerprint);
-  }
-  else
-  {
-    ret = ESPhttpUpdate.update(url, FIRMWARE_VERSION);
-  }
+  DEBUG_PORT.println("Downloading new firmware from ");
+  DEBUG_PORT.println(API_URL);
+
+#ifdef API_HTTPS
+  ret = ESPhttpUpdate.update(API_URL, version.c_str(), API_FINGERPRINT);
+#else
+  ret = ESPhttpUpdate.update(API_URL, version.c_str());
+#endif //API_HTTPS
 
   switch (ret)
   {
@@ -200,14 +424,14 @@ void parseIncoming(byte *data)
   }
 
   String dkey = header["key"];
-  if (dkey != DOMAIN_KEY)
+  if (dkey != domainKey)
   {
     DEBUG_PORT.println("Invalid message received, DOMAIN_KEY mismatch");
     return;
   }
 
   String akey = header["api"];
-  if (akey != API_KEY)
+  if (akey != apiKey)
   {
     DEBUG_PORT.println("Invalid message received, API_KEY mismatch");
     return;
@@ -238,22 +462,20 @@ void parseIncoming(byte *data)
       shouldAck = false;
       sendHeartbeat();
       break;
+    case MSG_FACTORY_RESET:
+      ack = _factoryResetRequested = true;
+      break;
     case MSG_OTA:
-      
-      _otaRequested = message.containsKey("url");
 
-      if(_otaRequested){
-        _otaHttps = message.containsKey("https");
-        const char* url = message["url"];
-        _otaURI = String(url);
-        if(_otaHttps){
-          const char* fpr = message["https"];
-          _otaFingerprint = String(fpr);
-        }else{
-          _otaFingerprint = "";
-        }
+      _otaRequested = message.containsKey("model");
+      _otaRequested = _otaRequested && message.containsKey("version");
+
+      if (_otaRequested)
+      {
+        const char *model = message["model"];
+        const char *version = message["version"];
       }
-      
+
       ack = _otaRequested;
       break;
 

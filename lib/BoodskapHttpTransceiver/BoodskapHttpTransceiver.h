@@ -20,48 +20,18 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. 
- */
-#include <Application.h>
+ */ 
 
-#if defined(USE_UDP)
-#include <BoodskapUdpTransceiver.h>
-#elif defined(USE_MQTT)
-#include <BoodskapMqttTransceiver.h>
-#elif defined(USE_HTTP)
-#include <BoodskapHttpTransceiver.h>
-#endif
+ #include <ESP8266HTTPClient.h>
+#include <BoodskapTransceiver.h>
 
-void setup()
-{
+#ifdef USE_HTTP
 
-  DEBUG_PORT.begin(BAUD_RATE);
-  DEBUG_PORT.println();
-  DEBUG_PORT.println();
+#ifndef _BSKP_HTTP_TRANSCEIVER_
+#define _BSKP_HTTP_TRANSCEIVER_
 
-  delay(100);
 
-  setupTransceiver();
 
-  setupApp();
+#endif //_BSKP_HTTP_TRANSCEIVER_
 
-  pinMode(0, INPUT);
-}
-
-void loop()
-{
-
-  if (digitalRead(0) == LOW) //If FLASH button is pressed for more than a 2 seconds
-  {
-    delay(1500);
-    if (digitalRead(0) == LOW)
-    {
-      _factoryResetRequested = true;
-    }
-  }
-
-  checkAndConnect();
-
-  loopApp();
-  
-  checkIncoming();
-}
+#endif //USE_HTTP

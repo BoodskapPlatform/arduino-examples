@@ -29,6 +29,16 @@ SOFTWARE.
 
 #define TOUCH_PIN D5
 
+#if defined(USE_UDP)
+const String deviceModel = "BSKP-TS-UDP";
+#elif defined(USE_MQTT)
+const String deviceModel = "BSKP-TS-MQTT";
+#elif defined(USE_HTTP)
+const String deviceModel = "BSKP-TS-HTTP";
+#endif
+
+const String firmwareVersion = "1.0.0";
+
 bool touched = false;
 int lastState = LOW;
 
@@ -38,12 +48,13 @@ void setupApp()
   pinMode(TOUCH_PIN, INPUT);
 
   DEBUG_PORT.println();
+  DEBUG_PORT.printf("TOUCH_PIN: %d\n", TOUCH_PIN);
+
+  delay(1000);
 }
 
 void loopApp()
 {
-
-  checkAndConnect();
 
   int currentState = digitalRead(TOUCH_PIN);
 
@@ -63,7 +74,6 @@ void loopApp()
 
   lastState = currentState;
 
-  checkIncoming();
 }
 
 bool handleIncoming(uint32_t messageId, JsonObject &header, JsonObject &data)

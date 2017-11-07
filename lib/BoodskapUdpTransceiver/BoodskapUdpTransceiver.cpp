@@ -23,13 +23,10 @@ SOFTWARE.
  */ 
 #ifdef USE_UDP
 
-#include <WiFiUdp.h>
-#include <BoodskapTransceiver.h>
 #include "BoodskapUdpTransceiver.h"
 
 WiFiUDP Udp;
 char UDP_PACKET[MESSAGE_BUFF_SIZE];
-long lastMessage = 0;
 
 void sendData(int messageId, JsonObject &root)
 {
@@ -37,8 +34,9 @@ void sendData(int messageId, JsonObject &root)
   String jsonStr;
   root.printTo(jsonStr);
 
-  if (messageId >= 100)
+  if (messageId >= 0)
   { //Print only user defined messages
+    DEBUG_PORT.print("Sending: ");
     DEBUG_PORT.println(jsonStr);
   }
 
@@ -56,11 +54,11 @@ void sendMessage(int messageId, JsonObject &data)
   JsonObject &root = jsonBuffer.createObject();
   JsonObject &header = jsonBuffer.createObject();
 
-  header["key"] = DOMAIN_KEY;
-  header["api"] = API_KEY;
+  header["key"] = domainKey.c_str();
+  header["api"] = apiKey.c_str();
   header["did"] = deviceId.c_str();
-  header["dmdl"] = DEVICE_MODEL;
-  header["fwver"] = FIRMWARE_VERSION;
+  header["dmdl"] = deviceModel.c_str();
+  header["fwver"] = firmwareVersion.c_str();
   header["mid"] = messageId;
 
   root["header"] = header;
@@ -76,7 +74,13 @@ void sendAck(JsonObject& header, uint32_t corrId, int ack)
   JsonObject &root = jsonBuffer.createObject();
   JsonObject &data = jsonBuffer.createObject();
 
+  header["key"] = domainKey.c_str();
+  header["api"] = apiKey.c_str();
+  header["did"] = deviceId.c_str();
+  header["dmdl"] = deviceModel.c_str();
+  header["fwver"] = firmwareVersion.c_str();
   header["mid"] = MSG_ACK;
+
   data["acked"] = ack;
 
   root["header"] = header;
@@ -108,7 +112,7 @@ void checkIncoming()
     }
   }
 
-  if ((millis() - lastMessage) >= UDP_HEARTBEAT_INTERVAL)
+  if ((millis() - lastMessage) >= (UDP_HEARTBEAT*1000))
   {
     sendHeartbeat();
   }

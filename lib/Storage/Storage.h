@@ -20,48 +20,27 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. 
- */
-#include <Application.h>
+ */ 
+#include <Arduino.h>
 
-#if defined(USE_UDP)
-#include <BoodskapUdpTransceiver.h>
-#elif defined(USE_MQTT)
-#include <BoodskapMqttTransceiver.h>
-#elif defined(USE_HTTP)
-#include <BoodskapHttpTransceiver.h>
-#endif
+#ifndef _STORAGE_H_
+#define _STORAGE_H_
 
-void setup()
-{
+#define BSKP_CONFIG_FILE "/config.json"
 
-  DEBUG_PORT.begin(BAUD_RATE);
-  DEBUG_PORT.println();
-  DEBUG_PORT.println();
+class Storage{
 
-  delay(100);
+  public:
+    virtual bool open();
+    virtual void close();
+    virtual bool format();
+    virtual bool exists(const char* file);
+	virtual bool remove(const char* file);
+    virtual size_t writeFile(const char* file, String data);
+    virtual size_t writeFile(const char* file, uint8_t* data, size_t length);
+    virtual String readFile(const char* file, size_t* read);
+    virtual size_t readFile(const char* file, uint8_t* data, size_t length);
+    virtual int16_t size(const char* file);
+};
 
-  setupTransceiver();
-
-  setupApp();
-
-  pinMode(0, INPUT);
-}
-
-void loop()
-{
-
-  if (digitalRead(0) == LOW) //If FLASH button is pressed for more than a 2 seconds
-  {
-    delay(1500);
-    if (digitalRead(0) == LOW)
-    {
-      _factoryResetRequested = true;
-    }
-  }
-
-  checkAndConnect();
-
-  loopApp();
-  
-  checkIncoming();
-}
+#endif //_STORAGE_H_
