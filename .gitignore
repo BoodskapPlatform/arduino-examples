@@ -1,5 +1,5 @@
 .pioenvs
 .piolibdeps
-.vscode
+.vscode/**
 .travis.yml
 .vscode/c_cpp_properties.json
