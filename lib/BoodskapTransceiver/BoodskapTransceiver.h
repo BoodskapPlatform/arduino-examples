@@ -27,14 +27,16 @@ SOFTWARE.
 #ifdef ESP8266
 #include <ESP8266WiFi.h>
 #include <ESP8266httpUpdate.h>
-#include <DNSServer.h>
 #include <ESP8266WebServer.h>
-#include <WiFiManager.h>
 #endif //ESP8266
 
 #ifdef ESP32_DEV
 #include <WiFi.h>
+#include <WebServer.h>
 #endif //ESP32_DEV
+
+#include <DNSServer.h>
+#include <WiFiManager.h>
 
 #ifndef _BSKP_TRANSCEIVER_H_
 #define _BSKP_TRANSCEIVER_H_

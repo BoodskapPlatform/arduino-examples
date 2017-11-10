@@ -27,7 +27,11 @@ SOFTWARE.
 #include <BoodskapTransceiver.h>
 #pragma message("*** Using Touch Sensor Implementation ****")
 
+#ifdef ESP8266
 #define TOUCH_PIN D5
+#elif ESP32_DEV
+#define TOUCH_PIN 14
+#endif
 
 #if defined(USE_UDP)
 const String deviceModel = "BSKP-TS-UDP";
@@ -41,20 +45,31 @@ const String firmwareVersion = "1.0.0";
 
 bool touched = false;
 int lastState = LOW;
+bool blink = false;
+long lastRun;
 
 void setupApp()
 {
 
   pinMode(TOUCH_PIN, INPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
 
   DEBUG_PORT.println();
   DEBUG_PORT.printf("TOUCH_PIN: %d\n", TOUCH_PIN);
+
 
   delay(1000);
 }
 
 void loopApp()
 {
+
+  if(millis() - lastRun >= 1000){
+    blink = !blink;
+    digitalWrite(LED_BUILTIN, blink ? HIGH : LOW);
+  }
+
+  lastRun = millis();
 
   int currentState = digitalRead(TOUCH_PIN);
 

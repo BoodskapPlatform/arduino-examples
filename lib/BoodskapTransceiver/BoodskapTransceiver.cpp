@@ -73,7 +73,7 @@ void setupTransceiver()
 #elif defined ESP32_DEV
   char cid[32];
   uint64_t chipid = ESP.getEfuseMac();
-  sprintf(cid, "%04X", (uint16_t)(chipid>>32));
+  sprintf(cid, "%04X", (uint16_t)(chipid >> 32));
   deviceId = "ESP32-";
   deviceId += cid;
 #endif
@@ -178,10 +178,8 @@ START:
   {
     DEBUG_PORT.println("*** Performing factory reset *****");
 
-#ifdef ESP8266
     WiFiManager wifiManager;
     wifiManager.resetSettings();
-#endif
 
     bool formatted = flash.format();
     DEBUG_PORT.printf("Formatted FLASH = %s\n", formatted ? "true" : "false");
@@ -201,7 +199,6 @@ START:
     _otaRequested = false;
   }
 
-#ifdef ESP8266
   if (!configured)
   {
 
@@ -216,13 +213,11 @@ START:
     WiFiManagerParameter _p_akey("akey", "API Key", apiKey.c_str(), 15);
     WiFiManagerParameter _p_api_url("api_url", "API Base URL", apiBastPath.c_str(), 40);
     WiFiManagerParameter _p_api_fp("api_fp", "API HTTPS Fingerprint", apiFingerprint.c_str(), 60);
-    WiFiManagerParameter _p_api_https("api_https", "If HTTPS API", "true", 6);
 
     wifiManager.addParameter(&_p_dkey);
     wifiManager.addParameter(&_p_akey);
     wifiManager.addParameter(&_p_api_url);
     wifiManager.addParameter(&_p_api_fp);
-    wifiManager.addParameter(&_p_api_https);
 
 #ifdef USE_UDP
     WiFiManagerParameter _p_udp_host("udp_host", "UDP Host/IP", UDP_HOST, 40);
@@ -241,11 +236,8 @@ START:
 
     if (!wifiManager.startConfigPortal(deviceId.c_str(), "boodskap"))
     {
-      DEBUG_PORT.println("failed to connect and hit timeout");
-      delay(3000);
-      //reset and try again, or maybe put it to deep sleep
-      ESP.reset();
-      delay(5000);
+      DEBUG_PORT.println("Configuration timeout, re-looping...");
+      return;
     }
 
     if (shouldSaveConfig)
@@ -260,7 +252,6 @@ START:
       root["akey"] = _p_akey.getValue();
       root["api_url"] = _p_api_url.getValue();
       root["api_fp"] = _p_api_fp.getValue();
-      root["api_https"] = String(_p_api_https.getValue()).equalsIgnoreCase("true");
 
 #ifdef USE_UDP
       root["udp_host"] = _p_udp_host.getValue();
@@ -281,7 +272,6 @@ START:
 
     return;
   }
-#endif //ESP8266
 
   if (WiFi.status() == WL_CONNECTED)
   {
@@ -327,7 +317,11 @@ BEGIN:
           DEBUG_PORT.print(" (");
           DEBUG_PORT.print(WiFi.RSSI(i));
           DEBUG_PORT.print(")");
+#ifdef ESP8266
           DEBUG_PORT.println((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? " " : "*");
+#elif defined ESP32_DEV
+          DEBUG_PORT.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
+#endif
           delay(10);
         }
       }
@@ -363,63 +357,12 @@ void sendHeartbeat()
   JsonObject &data = jsonBuffer.createObject();
   data["uptime"] = millis();
   data["freeheap"] = ESP.getFreeHeap();
-  
-  #ifdef ESP8266
+
+#ifdef ESP8266
   data["vcc"] = ESP.getVcc();
-  #endif
+#endif
 
   sendMessage(MSG_PING, data);
-}
-
-#ifdef ESP8266
-
-void doESP8266OTA(String model, String version)
-{
-  t_httpUpdate_return ret;
-
-  //https://api.boodskap.io/push/raw/{dkey}/{akey}/{did}/{dmdl}/{fwver}/{mid}
-  sprintf(API_URL, "%s/mservice/esp8266/ota?dkey=%s&akey=%s&dmodel=%s&fwver=%s", API_BASE_PATH, domainKey.c_str(), apiKey.c_str(), model.c_str(), version.c_str());
-
-  DEBUG_PORT.println("Downloading new firmware from ");
-  DEBUG_PORT.println(API_URL);
-
-#ifdef API_HTTPS
-  ret = ESPhttpUpdate.update(API_URL, version.c_str(), API_FINGERPRINT);
-#else
-  ret = ESPhttpUpdate.update(API_URL, version.c_str());
-#endif //API_HTTPS
-
-  switch (ret)
-  {
-  case HTTP_UPDATE_FAILED:
-    DEBUG_PORT.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
-    break;
-
-  case HTTP_UPDATE_NO_UPDATES:
-    DEBUG_PORT.println("HTTP_UPDATE_NO_UPDATES");
-    break;
-
-  case HTTP_UPDATE_OK:
-    DEBUG_PORT.println("HTTP_UPDATE_OK");
-    break;
-  }
-}
-
-#endif //ESP8266
-
-#ifdef ESP32_DEV
-void doESP32OTA(String model, String version)
-{
-}
-#endif //ESP32_DEV
-
-void doOTA(String model, String version)
-{
-#ifdef ESP8266
-  doESP8266OTA(model, version);
-#elif defined ESP32_DEV
-  doESP32OTA(model, version);
-#endif
 }
 
 void parseIncoming(byte *data)

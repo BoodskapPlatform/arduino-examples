@@ -40,7 +40,7 @@ class Storage{
     virtual size_t writeFile(const char* file, uint8_t* data, size_t length);
     virtual String readFile(const char* file, size_t* read);
     virtual size_t readFile(const char* file, uint8_t* data, size_t length);
-    virtual int16_t size(const char* file);
+    //virtual int16_t size(const char* file);
 };
 
 #endif //_STORAGE_H_
