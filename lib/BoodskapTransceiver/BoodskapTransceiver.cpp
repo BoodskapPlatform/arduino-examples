@@ -59,15 +59,23 @@ uint16_t httpHeartbeat;
 void setupTransceiver()
 {
 
-  deviceId = "ESP8266-";
-  deviceId += String(ESP.getChipId());
-
+  domainKey = DOMAIN_KEY;
+  apiKey = API_KEY;
+  wifiSSID = WIFI_SSID;
+  wifiPSK = WIFI_PSK;
   apiBastPath = API_BASE_PATH;
   apiFingerprint = API_FINGERPRINT;
-#ifdef API_HTTPS
-  apiHttps = true;
-#else
-  apiHttps = false;
+  apiHttps = apiBastPath.startsWith("https");
+
+#ifdef ESP8266
+  deviceId = "ESP8266-";
+  deviceId += String(ESP.getChipId());
+#elif defined ESP32_DEV
+  char cid[32];
+  uint64_t chipid = ESP.getEfuseMac();
+  sprintf(cid, "%04X", (uint16_t)(chipid>>32));
+  deviceId = "ESP32-";
+  deviceId += cid;
 #endif
 
 #ifdef USE_UDP
@@ -88,7 +96,12 @@ void setupTransceiver()
 
 #endif
 
-  flash.open();
+  if (!flash.open())
+  {
+    DEBUG_PORT.println("SPI Flash File System, failed opening, formatting....");
+    flash.format();
+    flash.open();
+  }
 
   if (flash.exists(BSKP_CONFIG_FILE))
   {
@@ -161,10 +174,15 @@ START:
   ++maxTries;
   int tries = 0;
 
-  if(_factoryResetRequested){
+  if (_factoryResetRequested)
+  {
     DEBUG_PORT.println("*** Performing factory reset *****");
+
+#ifdef ESP8266
     WiFiManager wifiManager;
     wifiManager.resetSettings();
+#endif
+
     bool formatted = flash.format();
     DEBUG_PORT.printf("Formatted FLASH = %s\n", formatted ? "true" : "false");
     _rebootRequested = true;
@@ -183,6 +201,7 @@ START:
     _otaRequested = false;
   }
 
+#ifdef ESP8266
   if (!configured)
   {
 
@@ -262,6 +281,7 @@ START:
 
     return;
   }
+#endif //ESP8266
 
   if (WiFi.status() == WL_CONNECTED)
   {
@@ -342,14 +362,19 @@ void sendHeartbeat()
   StaticJsonBuffer<MESSAGE_BUFF_SIZE> jsonBuffer;
   JsonObject &data = jsonBuffer.createObject();
   data["uptime"] = millis();
-  data["vcc"] = ESP.getVcc();
   data["freeheap"] = ESP.getFreeHeap();
+  
+  #ifdef ESP8266
+  data["vcc"] = ESP.getVcc();
+  #endif
+
   sendMessage(MSG_PING, data);
 }
 
-void doOTA(String model, String version)
-{
+#ifdef ESP8266
 
+void doESP8266OTA(String model, String version)
+{
   t_httpUpdate_return ret;
 
   //https://api.boodskap.io/push/raw/{dkey}/{akey}/{did}/{dmdl}/{fwver}/{mid}
@@ -378,6 +403,23 @@ void doOTA(String model, String version)
     DEBUG_PORT.println("HTTP_UPDATE_OK");
     break;
   }
+}
+
+#endif //ESP8266
+
+#ifdef ESP32_DEV
+void doESP32OTA(String model, String version)
+{
+}
+#endif //ESP32_DEV
+
+void doOTA(String model, String version)
+{
+#ifdef ESP8266
+  doESP8266OTA(model, version);
+#elif defined ESP32_DEV
+  doESP32OTA(model, version);
+#endif
 }
 
 void parseIncoming(byte *data)

@@ -24,10 +24,8 @@ SOFTWARE.
 
 #ifdef USE_MQTT
 
-#include <ESP8266WiFi.h>
-#include <PubSubClient.h>
-#include <WiFiUdp.h>
 #include <BoodskapTransceiver.h>
+#include <PubSubClient.h>
 
 #ifndef _BSKP_MQTT_TRANSCEIVER_
 #define _BSKP_MQTT_TRANSCEIVER_

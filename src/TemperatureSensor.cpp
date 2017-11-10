@@ -24,42 +24,21 @@ SOFTWARE.
 #ifdef IMPL_TEMP_SENSOR
 
 #include <Arduino.h>
-#include <BoodskapTransceiver.h>
+
 #pragma message("*** Using Temperature Sensor Implementation ****")
 
-long lastPrint = 0;
-
-void setupApp()
+void setup()
 {
-
-  DEBUG_PORT.println();
+  Serial.begin(115200);
+  Serial.println("");
+  Serial.println("Setup Complete");
 }
 
-void loopApp()
+void loop()
 {
-
-  checkAndConnect();
-
-  if ((millis() - lastPrint) >= 5000)
-  {
-    DEBUG_PORT.println(millis());
-    lastPrint = millis();
-  }
-
-  checkIncoming();
+  Serial.println("looping...");
+  delay(10000);
 }
 
-bool handleIncoming(uint32_t messageId, JsonObject &header, JsonObject &data)
-{
-  //Messages from platform reaches here
-
-  bool acked = false;
-
-  switch (messageId)
-  {
-  }
-
-  return acked;
-}
 
 #endif //IMPL_TEMP_SENSOR

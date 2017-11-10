@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. 
  */
+#ifdef BSKP_FW
+
 #include <Application.h>
 
 #if defined(USE_UDP)
@@ -50,6 +52,7 @@ void setup()
 void loop()
 {
 
+#ifdef ESP8266
   if (digitalRead(0) == LOW) //If FLASH button is pressed for more than a 2 seconds
   {
     delay(1500);
@@ -58,10 +61,13 @@ void loop()
       _factoryResetRequested = true;
     }
   }
+#endif
 
   checkAndConnect();
 
   loopApp();
-  
+
   checkIncoming();
 }
+
+#endif //BSKP_FW
