@@ -32,14 +32,16 @@ void doOTA(String model, String version)
   //https://api.boodskap.io/push/raw/{dkey}/{akey}/{did}/{dmdl}/{fwver}/{mid}
   sprintf(API_URL, "%s/mservice/esp8266/ota?dkey=%s&akey=%s&dmodel=%s&fwver=%s", API_BASE_PATH, domainKey.c_str(), apiKey.c_str(), model.c_str(), version.c_str());
 
+  bool https = String(API_BASE_PATH).startsWith("https");
+
   DEBUG_PORT.println("Downloading new firmware from ");
   DEBUG_PORT.println(API_URL);
 
-#ifdef API_HTTPS
-  ret = ESPhttpUpdate.update(API_URL, version.c_str(), API_FINGERPRINT);
-#else
-  ret = ESPhttpUpdate.update(API_URL, version.c_str());
-#endif //API_HTTPS
+  if(https){
+    ret = ESPhttpUpdate.update(API_URL, version.c_str(), API_FINGERPRINT);
+  }else{
+    ret = ESPhttpUpdate.update(API_URL, version.c_str());
+  }
 
   switch (ret)
   {

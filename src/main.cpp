@@ -24,6 +24,8 @@ SOFTWARE.
 #ifdef BSKP_FW
 
 #include <Application.h>
+#include <BoodskapTransceiver.h>
+#include <Timer.h>
 
 #if defined(USE_UDP)
 #include <BoodskapUdpTransceiver.h>
@@ -33,12 +35,19 @@ SOFTWARE.
 #include <BoodskapHttpTransceiver.h>
 #endif
 
+Timer timer;
+
 void setup()
 {
 
   DEBUG_PORT.begin(BAUD_RATE);
   DEBUG_PORT.println();
   DEBUG_PORT.println();
+  DEBUG_PORT.println("///");
+  DEBUG_PORT.printf("MODEL:%s\r\n", deviceModel.c_str());
+  DEBUG_PORT.printf("VERSION:%s\r\n", firmwareVersion.c_str());
+  DEBUG_PORT.printf("BUILD:%d\r\n", BUILD_TIMESTAMP);
+  DEBUG_PORT.println("///");
 
   delay(100);
 
@@ -46,7 +55,9 @@ void setup()
 
   setupApp();
 
+#ifdef ESP8266
   pinMode(0, INPUT);
+#endif
 }
 
 void loop()
@@ -68,6 +79,8 @@ void loop()
   loopApp();
 
   checkIncoming();
+
+  timer.update();
 }
 
 #endif //BSKP_FW

@@ -23,6 +23,7 @@ SOFTWARE.
  */ 
 #include <ArduinoJson.h>
 #include <Storage.h>
+#include <Timer.h>
 
 #ifdef ESP8266
 #include <ESP8266WiFi.h>
@@ -53,6 +54,7 @@ SOFTWARE.
  * Return true to ack the message, false to nack the message
  */
 extern bool handleIncoming(uint32_t messageId, JsonObject& header, JsonObject& message);
+extern bool handleIncoming(byte* data);
 
 //===================================================================
 
@@ -94,6 +96,7 @@ extern bool apiHttps;
 extern bool _factoryResetRequested;
 extern bool _rebootRequested;
 extern bool _otaRequested;
+extern Timer timer;
 
 #ifdef USE_UDP
 

@@ -56,6 +56,75 @@ uint16_t mqttHeartbeat;
 uint16_t httpHeartbeat;
 #endif
 
+/**
+WiFiEventHandler onStationModeConnected(std::function<void(const WiFiEventStationModeConnected&)>);
+WiFiEventHandler onStationModeDisconnected(std::function<void(const WiFiEventStationModeDisconnected&)>);
+WiFiEventHandler onStationModeAuthModeChanged(std::function<void(const WiFiEventStationModeAuthModeChanged&)>);
+WiFiEventHandler onStationModeGotIP(std::function<void(const WiFiEventStationModeGotIP&)>);
+WiFiEventHandler onStationModeDHCPTimeout(std::function<void(void)>); 
+*/
+
+void onStationConnected(const WiFiEventStationModeConnected &event)
+{
+  DEBUG_PORT.printf("SSID %s connected, CHANNEL: %s\n", event.ssid.c_str(), event.channel);
+}
+
+void onStationDisconnected(const WiFiEventStationModeDisconnected &event)
+{
+
+  DEBUG_PORT.printf("SSID %s disconnected, REASON: ", event.ssid.c_str());
+
+  switch(event.reason){
+    case WIFI_DISCONNECT_REASON_AUTH_EXPIRE: DEBUG_PORT.println("AUTH_EXPIRE"); break;
+    case WIFI_DISCONNECT_REASON_AUTH_LEAVE: DEBUG_PORT.println("AUTH_LEAVE"); break;
+    case WIFI_DISCONNECT_REASON_ASSOC_EXPIRE: DEBUG_PORT.println("ASSOC_EXPIRE"); break;
+    case WIFI_DISCONNECT_REASON_ASSOC_TOOMANY: DEBUG_PORT.println("ASSOC_TOOMANY"); break;
+    case WIFI_DISCONNECT_REASON_NOT_AUTHED: DEBUG_PORT.println("NOT_AUTHED"); break;
+    case WIFI_DISCONNECT_REASON_NOT_ASSOCED: DEBUG_PORT.println("NOT_ASSOCED"); break;
+    case WIFI_DISCONNECT_REASON_ASSOC_LEAVE: DEBUG_PORT.println("ASSOC_LEAVE"); break;
+    case WIFI_DISCONNECT_REASON_ASSOC_NOT_AUTHED: DEBUG_PORT.println("ASSOC_NOT_AUTHED"); break;
+    case WIFI_DISCONNECT_REASON_DISASSOC_PWRCAP_BAD: DEBUG_PORT.println("DISASSOC_PWRCAP_BAD"); break;
+    case WIFI_DISCONNECT_REASON_DISASSOC_SUPCHAN_BAD: DEBUG_PORT.println("DISASSOC_SUPCHAN_BAD"); break;
+    case WIFI_DISCONNECT_REASON_IE_INVALID: DEBUG_PORT.println("IE_INVALID"); break;
+    case WIFI_DISCONNECT_REASON_MIC_FAILURE: DEBUG_PORT.println("MIC_FAILURE"); break;
+    case WIFI_DISCONNECT_REASON_4WAY_HANDSHAKE_TIMEOUT: DEBUG_PORT.println("4WAY_HANDSHAKE_TIMEOUT"); break;
+    case WIFI_DISCONNECT_REASON_GROUP_KEY_UPDATE_TIMEOUT: DEBUG_PORT.println("GROUP_KEY_UPDATE_TIMEOUT"); break;
+    case WIFI_DISCONNECT_REASON_IE_IN_4WAY_DIFFERS: DEBUG_PORT.println("IE_IN_4WAY_DIFFERS"); break;
+    case WIFI_DISCONNECT_REASON_GROUP_CIPHER_INVALID: DEBUG_PORT.println("GROUP_CIPHER_INVALID"); break;
+    case WIFI_DISCONNECT_REASON_PAIRWISE_CIPHER_INVALID: DEBUG_PORT.println("PAIRWISE_CIPHER_INVALID"); break;
+    case WIFI_DISCONNECT_REASON_AKMP_INVALID: DEBUG_PORT.println("AKMP_INVALID"); break;
+    case WIFI_DISCONNECT_REASON_UNSUPP_RSN_IE_VERSION: DEBUG_PORT.println("UNSUPP_RSN_IE_VERSION"); break;
+    case WIFI_DISCONNECT_REASON_INVALID_RSN_IE_CAP: DEBUG_PORT.println("INVALID_RSN_IE_CAP"); break;
+    case WIFI_DISCONNECT_REASON_802_1X_AUTH_FAILED: DEBUG_PORT.println("802_1X_AUTH_FAILED"); break;
+    case WIFI_DISCONNECT_REASON_CIPHER_SUITE_REJECTED: DEBUG_PORT.println("CIPHER_SUITE_REJECTED"); break;
+    case WIFI_DISCONNECT_REASON_BEACON_TIMEOUT: DEBUG_PORT.println("BEACON_TIMEOUT"); break;
+    case WIFI_DISCONNECT_REASON_NO_AP_FOUND: DEBUG_PORT.println("NO_AP_FOUND"); break;
+    case WIFI_DISCONNECT_REASON_AUTH_FAIL: DEBUG_PORT.println("AUTH_FAIL"); break;
+    case WIFI_DISCONNECT_REASON_ASSOC_FAIL: DEBUG_PORT.println("ASSOC_FAIL"); break;
+    case WIFI_DISCONNECT_REASON_HANDSHAKE_TIMEOUT: DEBUG_PORT.println("HANDSHAKE_TIMEOUT"); break;
+    case WIFI_DISCONNECT_REASON_UNSPECIFIED:
+    default:  DEBUG_PORT.println("UNSPECIFIED"); break;
+  }
+  
+}
+
+void onStationAuthModeChanged(const WiFiEventStationModeAuthModeChanged &event)
+{
+  DEBUG_PORT.printf("WiFi Auth Mode Changed from: %d to: %d\n", event.oldMode, event.newMode);
+}
+
+void onStationGotIP(const WiFiEventStationModeGotIP &event)
+{
+  DEBUG_PORT.printf("WiFI Station IP: ");
+  event.ip.printTo(DEBUG_PORT);
+  DEBUG_PORT.println();
+}
+
+void onStationDHCPTimeout()
+{
+  DEBUG_PORT.println("DHCP Timeout");
+}
+
 void setupTransceiver()
 {
 
@@ -155,6 +224,12 @@ void setupTransceiver()
 FINISH:
 
   flash.close();
+
+  WiFi.onStationModeAuthModeChanged(&onStationAuthModeChanged);
+  WiFi.onStationModeConnected(&onStationConnected);
+  //WiFi.onStationModeDHCPTimeout(&onStationDHCPTimeout);
+  WiFi.onStationModeDisconnected(&onStationDisconnected);
+  WiFi.onStationModeGotIP(&onStationGotIP);
 
   DEBUG_PORT.printf("*** Configured = %d ***\n", configured);
 
@@ -277,7 +352,20 @@ START:
   {
     maxTries = 0;
     return;
-  }
+  }else{
+
+    DEBUG_PORT.print("WiFI not connected, state: ");
+
+    switch(WiFi.status()){
+      case WL_NO_SHIELD: DEBUG_PORT.println("WL_NO_SHIELD"); break;
+      case WL_IDLE_STATUS: DEBUG_PORT.println("WL_IDLE_STATUS"); break;
+      case WL_NO_SSID_AVAIL: DEBUG_PORT.println("WL_NO_SSID_AVAIL"); break;
+      case WL_SCAN_COMPLETED: DEBUG_PORT.println("WL_SCAN_COMPLETED"); break;
+      case WL_CONNECT_FAILED: DEBUG_PORT.println("WL_CONNECT_FAILED"); break;
+      case WL_CONNECTION_LOST: DEBUG_PORT.println("WL_CONNECTION_LOST"); break;
+      case WL_DISCONNECTED: DEBUG_PORT.println("WL_DISCONNECTED"); break;
+    }
+}
 
 BEGIN:
 
@@ -368,9 +456,10 @@ void sendHeartbeat()
 void parseIncoming(byte *data)
 {
 
-  //DEBUG_PORT.println("Message received");
-  //DEBUG_PORT.println((char*)data);
-
+  DEBUG_PORT.println("\n**** Message received ****");
+  DEBUG_PORT.println((char*)data);
+  DEBUG_PORT.println();
+  
   StaticJsonBuffer<MESSAGE_BUFF_SIZE> jsonBuffer;
   JsonObject &root = jsonBuffer.parseObject(data);
 
@@ -380,6 +469,9 @@ void parseIncoming(byte *data)
   {
     DEBUG_PORT.println("Invalid json data received, unable to parse.");
     DEBUG_PORT.println((char *)data);
+    return;
+  }else{
+    handleIncoming(data);
     return;
   }
 
@@ -457,8 +549,8 @@ void parseIncoming(byte *data)
 
       if (_otaRequested)
       {
-        const char *model = message["model"];
-        const char *version = message["version"];
+        _otaModel = message["model"].as<String>();
+        _otaVersion = message["version"].as<String>();
       }
 
       ack = _otaRequested;
