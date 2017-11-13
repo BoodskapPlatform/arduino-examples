@@ -116,7 +116,7 @@ void sendReading()
 
 }
 
-bool handleIncoming(uint32_t messageId, JsonObject &header, JsonObject &data)
+bool handleMessage(uint32_t messageId, JsonObject &header, JsonObject &data)
 {
   //Messages from platform reaches here
 
@@ -129,7 +129,7 @@ bool handleIncoming(uint32_t messageId, JsonObject &header, JsonObject &data)
   return acked;
 }
 
-bool handleIncoming(byte* data){
+bool handleData(byte* data){
   return true;
 }
 

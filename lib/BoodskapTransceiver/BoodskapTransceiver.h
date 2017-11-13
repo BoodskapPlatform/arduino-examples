@@ -53,8 +53,8 @@ SOFTWARE.
  * Implement these methods in your code to handle incoming commands
  * Return true to ack the message, false to nack the message
  */
-extern bool handleIncoming(uint32_t messageId, JsonObject& header, JsonObject& message);
-extern bool handleIncoming(byte* data);
+extern bool handleMessage(uint32_t messageId, JsonObject& header, JsonObject& message);
+extern bool handleData(byte* data);
 
 //===================================================================
 

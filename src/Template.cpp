@@ -20,19 +20,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. 
- */ 
-#ifdef IMPL_AD_MODEM
+ */
+#ifdef IMPL_YOUR_IMPL
 
 #include <Arduino.h>
 #include <BoodskapTransceiver.h>
-#pragma message("*** Using Touch Sensor Implementation ****")
+#pragma message("*** Your Implementation ****")
 
 #ifdef ESP8266
-const String mPrefix = "BSKP-ESP8266-ADM-";
-#define TOUCH_PIN D5
+const String mPrefix = "BSKP-%s-ESP8266";
 #elif ESP32_DEV
-const String mPrefix = "BSKP-ESP32-ADM-";
-#define TOUCH_PIN 14
+const String mPrefix = "BSKP-%s-ESP32";
 #endif
 
 #if defined(USE_UDP)
@@ -45,59 +43,42 @@ const String deviceModel = mPrefix + String("HTTP");
 
 const String firmwareVersion = "1.0.0";
 
-bool touched = false;
-int lastState = LOW;
-bool blink = false;
-long lastRun;
+void takeReading();
+void sendReading();
 
 void setupApp()
 {
 
-
-  pinMode(TOUCH_PIN, INPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
-
-  DEBUG_PORT.println();
-  DEBUG_PORT.printf("TOUCH_PIN: %d\n", TOUCH_PIN);
-
+  timer.every(1000, &takeReading);
+  timer.every(60000, &sendReading);
 
   delay(1000);
 }
 
 void loopApp()
 {
+}
 
-  if(millis() - lastRun >= 1000){
-    blink = !blink;
-    digitalWrite(LED_BUILTIN, blink ? HIGH : LOW);
-  }
+void takeReading()
+{
+}
 
-  lastRun = millis();
+void sendReading()
+{
 
-  int currentState = digitalRead(TOUCH_PIN);
+  StaticJsonBuffer<YOUR_SIZE> jsonBuffer;
+  JsonObject &data = jsonBuffer.createObject();
+  data["your_value"] = your_value;
 
-  if (currentState == HIGH && lastState == LOW)
-  {
-
-    touched = !touched; //toggle state
-
-    StaticJsonBuffer<32> jsonBuffer;
-    JsonObject &data = jsonBuffer.createObject();
-    data["state"] = touched;
-
-    DEBUG_PORT.println(touched ? "ON" : "OFF");
-
-    sendMessage(100, data);
-  }
-
-  lastState = currentState;
-
+  sendMessage(YOUR_MESSAGE_ID, data);
 }
 
 bool handleMessage(uint32_t messageId, JsonObject &header, JsonObject &data)
 {
   //Messages from platform reaches here
 
+  DEBUG_PORT.println("Handling message");
+  
   bool acked = false;
 
   switch (messageId)
@@ -107,8 +88,11 @@ bool handleMessage(uint32_t messageId, JsonObject &header, JsonObject &data)
   return acked;
 }
 
-bool handleData(byte* data){
+bool handleData(byte *data)
+{
+  DEBUG_PORT.println("Handling data");
+
   return true;
 }
 
-#endif //IMPL_AD_MODEM
+#endif //IMPL_YOUR_IMPL

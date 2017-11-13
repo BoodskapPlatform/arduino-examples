@@ -465,23 +465,13 @@ void parseIncoming(byte *data)
 
   bool invalid = !root.success();
 
-  if (invalid)
-  {
-    DEBUG_PORT.println("Invalid json data received, unable to parse.");
-    DEBUG_PORT.println((char *)data);
-    return;
-  }else{
-    handleIncoming(data);
-    return;
-  }
-
-  invalid = (!root.containsKey("header"));
+  invalid = invalid || (!root.containsKey("header"));
   invalid = (invalid || !root.containsKey("data"));
 
   if (invalid)
   {
-    DEBUG_PORT.println("Invalid message received");
-    DEBUG_PORT.println((char *)data);
+    DEBUG_PORT.println("Not a JSON message");
+    handleData(data);
     return;
   }
 
@@ -528,7 +518,8 @@ void parseIncoming(byte *data)
 
   if (messageId >= 100 || messageId < 0)
   { //User defined commands
-    ack = handleIncoming(messageId, header, message);
+    DEBUG_PORT.printf("*** User Defined Message : %d ***\n", messageId);
+    ack = handleMessage(messageId, header, message);
   }
   else
   { //System commands
@@ -559,6 +550,8 @@ void parseIncoming(byte *data)
     case MSG_REBOOT:
       _rebootRequested = ack = true;
       break;
+    default:
+      DEBUG_PORT.printf("*** Unimplemented Message: %d ***\n", messageId);
     }
   }
 
