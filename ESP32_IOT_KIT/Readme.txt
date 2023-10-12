@@ -1,1 +1,0 @@
-Boodskap is a disruptive (IoT) Platform helps to quickly connect any hardware devices and to rapidly build connected applications in a cost efficient manner
