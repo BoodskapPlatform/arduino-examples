@@ -4,7 +4,7 @@
 #include <PubSubClient.h>
 
 #define MQTT_SERVER "Enter Your MQTT Server" /* Enter Your MQTT Server */
-#define MQTT_PORT 1883                       /**/ Enter Your MQTT PORT
+#define MQTT_PORT 1883                       /* Enter Your MQTT PORT */
 
 #define SSID "Testing"      // Enter Your WIFI Name
 #define PASSWORD "12345678" // Enter Your WIFI Password
