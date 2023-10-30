@@ -1,0 +1,16 @@
+PIN DETAILS
+-------------------------------
+
+LED               PB15
+
+BUZZER            PA8
+
+SWITCH            PA11
+
+DS18B20           PB4  
+
+MOTIONSENSOR      PB5
+
+DHT_PIN           PC13                          
+
+ADC PINS          PB1,PB0,PA0,PA1,PA2,PA3,PA4,PA5,PA6,PA7

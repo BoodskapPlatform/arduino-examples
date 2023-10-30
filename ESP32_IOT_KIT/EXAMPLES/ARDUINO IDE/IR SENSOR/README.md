@@ -1,4 +1,4 @@
-# Boodskap IoT - ESP32 Examples (ADXL345 accelerometer)
+
 # Boodskap IoT - ESP32 Examples (IR SENSOR)
 
 ## Overview

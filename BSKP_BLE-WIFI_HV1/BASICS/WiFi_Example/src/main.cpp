@@ -4,22 +4,22 @@
 #include <PubSubClient.h>
 
 #define MQTT_SERVER "Enter Your MQTT Server" /* Enter Your MQTT Server */
-#define MQTT_PORT 1883                       /* Enter Your MQTT PORT */
+#define MQTT_PORT 1883                       /*Enter Your MQTT PORT*/
 
-#define SSID "Testing"      // Enter Your WIFI Name
-#define PASSWORD "12345678" // Enter Your WIFI Password
+#define SSID "Testing"                       /* Enter Your WIFI Name */
+#define PASSWORD "12345678" /*Enter Your WIFI Password*/
 
-#define DEVICE_TOKEN "Boodskap Platform token" // Enter Your Boodskap Platform token
+#define DEVICE_TOKEN "Boodskap Platform token" /*Enter Your Boodskap Platform token*/
 
-#define MSG_ID 10000 // Enter Your Message ID
+#define MSG_ID 10000 /*Enter Your Message ID*/
 
 #define WIFI_LED 19
 #define INTERNET_LED 18
 
-String clientid = DEVICE_TOKEN; // Enter your Token
+String clientid = DEVICE_TOKEN; /*Enter your Token*/
 
-// MQTT Topic
-String topic = "/" + String(DEVICE_TOKEN) + "/pub/" + String(MSG_ID); // topic = "/YOUR_DEVICE_TOKEN/pub/YOUR MESSSAGE ID"
+/* MQTT Topic */
+String topic = "/" + String(DEVICE_TOKEN) + "/pub/" + String(MSG_ID); /*topic = "/YOUR_DEVICE_TOKEN/pub/YOUR MESSSAGE ID"*/
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -74,7 +74,7 @@ void loop()
             Serial.print("Failed, rc=");
             Serial.print(client.state());
             client.connect(clientid.c_str());
-            delay(10000); // You can change the Server connection waiting time
+            delay(10000); /* You can change the Server connection waiting time*/
         }
     }
     else
@@ -86,7 +86,7 @@ void loop()
         Serial.println(WiFi.status());
         if (WiFi.status() == WL_DISCONNECTED)
         {
-            // WiFi.disconnect();
+            /*WiFi.disconnect();*/
             WiFi.begin(SSID, PASSWORD);
         }
         delay(1000);
